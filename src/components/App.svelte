@@ -20,10 +20,10 @@
 </script>
 
 <main>
-  <h3>Discover How Our World's Wealth Affects the Air We Breathe and the Lives We Lead</h3>
+  <h3>Topic: Story telling about the Ukraine Conflicts progress</h3>
   <div style="margin: 0 auto; max-width: 950px;">
     <p style="text-align:left; font-size:23px; line-height:100%">
-      Deaths that are from all causes attributed to household air pollution from solid fuels per 100,000 people, in both sexes aged age-standardized
+      World Deaths from Conflicts
     </p>
   </div>
   <br>
@@ -31,38 +31,21 @@
 
   <div style="margin: 0 auto; max-width: 1000px;">
     <div style="margin: 0 auto; max-width: auto;">
-      <h4 style="text-align:left;">Design Rationale:</h4>
+      <h4 style="text-align:left;">Write Up: What have you done so far? </h4>
       <p style="text-align:left;">
-        In designing our visualization, we aimed to represent the relationship between GDP, CO2 emissions, and death rates due to indoor air pollution across different countries and years. We chose a scatter plot as our primary visualization technique to effectively display this multivariate data. The x-axis represents GDP, the y-axis represents death rates, and the size of the circles represents population size. Additionally, we used color encoding to distinguish between continents, providing another layer of information.
+        We have conducted extensive research on the Ukraine conflicts, gathering data, articles, and reports to gain a comprehensive understanding of the topic.
+        We have identified key events, milestones, and developments in the Ukraine conflicts, organizing them into a chronological timeline.
+        We have started designing the layout and structure of our interactive web page, envisioning how we will present the information to users.
+        We have begun prototyping different visualization techniques, including timeflow charts, maps, and textual narratives, to effectively communicate the progression of the conflicts.
       </p>
       <br>
+      <h4 style="text-align:left;">What will be the most challenging of your project to design and why? </h4>
       <p style="text-align:left;">
-        We chose logarithmic scaling for the x-axis to accommodate the wide range of GDP values across countries while maintaining clarity in the visualization. For the y-axis, linear scaling was appropriate as death rates are typically represented in a linear scale. We used square root scaling for circle radius to prevent large population sizes from dominating the visualization.
-      </p>
-      <br>
-      <p style="text-align:left;">
-        To enable interactivity, we added a slider component that allows users to select specific years. This allows for dynamic exploration of the data over time, providing insights into trends and patterns.
+        we anticipate that integrating the scrollytelling feature will pose the greatest challenge. Scrollytelling involves synchronizing the narrative progression with the user's scrolling actions, creating a seamless storytelling experience. This feature requires precise coordination between text, visuals, and user interactions, ensuring that the content unfolds in a coherent and engaging manner. Additionally, implementing map visualizations with Mapbox presents its own set of challenges, particularly regarding the layout and functionality when the foreground elements are absent. We anticipate that troubleshooting and resolving these issues will require careful attention to detail and experimentation with different design approaches. Despite these challenges, we are committed to delivering a compelling and informative Explorable Explanation on the Ukraine conflicts, leveraging innovative storytelling techniques and data visualization methods.
       </p>
     </div>
     <br>
-    <div style="margin: 0 auto; max-width: auto;">
-      <h4 style="text-align:left;">Development Process:</h4>
-      <p style="text-align:left;">
-        We spent significant time importing and processing the data to ensure it was in a suitable format for visualization. This involved parsing the CSV file, converting date fields, and preparing the data for display.
-      </p>
-      <br>
-      <p style="text-align:left;">
-        Initially, we encountered an issue where the graph wouldn't load once the app ran. Our investigation led us to a crucial misunderstanding of the `onMount()` function in Svelte. We incorrectly assumed that using `onMount()` for initializing our graph, alongside data loaded asynchronously, would suffice. However, we didn't account for the timing issues related to the asynchronous data loading process. This oversight resulted in the graph attempting to render before the data was fully available, leading to an empty visualization.
 
-        Further complicating the issue, we introduced `afterUpdate()` in an attempt to refresh the graph once the data had updated. Unfortunately, this created a conflict with our initialization logic in `onMount()`. The `afterUpdate()` function was meant to reinitialize the graph with new data, but its execution interfered with the proper initialization process. The graph's data dependency meant that it needed a complete, successful data load before any rendering attempts, something our initial setup with `onMount()` and `afterUpdate()` failed to coordinate effectively.
-
-        The breakthrough came when we decided to remove `afterUpdate()` from our graph initialization logic. This action eliminated the conflict and allowed the `onMount()` function to correctly wait for the asynchronous data to load before attempting to render the graph. By simplifying our approach and ensuring that the graph initialization logic only ran after the data was fully prepared, we resolved the issue. The graph now loads correctly upon the app's startup, showcasing the intended visualization without any timing or data synchronization issues.
-      </p>
-      <br>
-      <p style="text-align:left;">
-        To resolve this issue, we restructured our code to properly handle the asynchronous loading of data. Instead of initializing the graph in the onMount() function, we moved the graph initialization logic to a separate function that is called once the data is successfully loaded. This ensured that the graph is only initialized when the data is available, preventing the issue of the graph not loading on app startup.
-      </p>
-    </div>
   </div>
 </main>
 
