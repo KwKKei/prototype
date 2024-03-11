@@ -1,86 +1,198 @@
-<script>
+<script lang="ts">
   import { onMount } from 'svelte';
   import * as d3 from 'd3';
-  import Graph from './graph.svelte';
+  import Slider from './Slider.svelte';
+  import CheckboxFilter from './CheckboxFilter.svelte';
 
-  let data = [];
-  let tempData = [];
+  export let data;
+  export let selectedYear;
+
+  let svg;
+  let circle;
+  let xAxis;
+  let yAxis;
+  let grid;
+  let x;
+  let y;
+  let radius;
+  let color;
+  let gx;
+  let gy;
+
+  const margin = { top: 20, right: 40, bottom: 65, left: 40 };
+  const width = 960;
+  const height = 560;
+
+  let selectedContinents = [];
+
+  const dataAt = year => data.filter(d => d.Year === year);
+
+  const bisect = d3.bisector((d) => d.dataAt).center;
+  let tooltipPt = null;
+
+  // Function to update tooltip and provide storytelling narrative
+  function updateTooltip(event) {
+    const i = bisect(data, x.invert(d3.pointer(event)[0]));
+    tooltipPt = data[i];
+
+    // Provide storytelling narrative based on the current data point
+    // You can customize this narrative according to your storytelling needs
+    if (tooltipPt) {
+      console.log(`In ${tooltipPt.Year}, ${tooltipPt.Entity} in ${tooltipPt.Continent} had a GDP of ${tooltipPt.GDP}, emitted ${tooltipPt['CO2 emissions']} tons of CO2, and experienced ${tooltipPt.Death} deaths.`);
+    }
+  }
+
+  function onPointerMove(event) {
+    updateTooltip(event);
+  }
+
+  function onPointerLeave(event) {
+    tooltipPt = null;
+  }
 
   onMount(async () => {
-    const res = await fetch('gdp_co2_death.csv');
-    const text = await res.text();
-    tempData = d3.csvParse(text, d3.autoType);
+      // Fetch data
+      const res = await fetch('gdp_co2_death.csv');
+      data = await res.text();
+      data = d3.csvParse(data, d3.autoType);
 
-    // Parse date fields and create a new 'date' variable
-    data = tempData.map(d => ({
-      ...d,
-      date: new Date(d.Year, 0) // Assuming 'Year' is the name of your date field
-    }));
+      // Determine domain for x, y, and radius scales
+      const minGDP = d3.min(data, d => d.GDP);
+      const maxGDP = d3.max(data, d => d.GDP);
+      const minDeath = d3.min(data, d => d.Death);
+      const maxDeath = d3.max(data, d => d.Death);
+      const minPopulation = d3.min(data, d => d.Population);
+      const maxPopulation = d3.max(data, d => d.Population);
+
+      x = d3.scaleLog([minGDP, maxGDP], [margin.left, width - margin.right]);
+      y = d3.scaleLinear([minDeath, maxDeath], [height - margin.bottom, margin.top]);
+      radius = d3.scaleSqrt([minPopulation, maxPopulation], [0, width / 24]);
+      color = d3.scaleOrdinal(data.map(d => d.Continent), d3.schemeCategory10).unknown("black");
+
+      const svgNode = d3.select("#chart").append("svg")
+          .attr("viewBox", [0, 0, width, height]);
+
+      xAxis = g => g
+          .attr("transform", `translate(0,${height - margin.bottom + 15})`)
+          .call(d3.axisBottom(x).ticks(width / 80, ","))
+          .call(g => g.select(".domain").remove())
+          .call(g => g.append("text")
+              .attr("x", width)
+              .attr("y", margin.bottom - 25)
+              .attr("fill", "currentColor")
+              .attr("text-anchor", "end")
+              .text("GDP →"));
+
+      yAxis = g => g
+          .attr("transform", `translate(${margin.left},0)`)
+          .call(d3.axisLeft(y))
+          .call(g => g.select(".domain").remove())
+          .call(g => g.append("text")
+              .attr("x", -margin.left)
+              .attr("y", 10)
+              .attr("fill", "currentColor")
+              .attr("text-anchor", "start")
+              .text("↑ Death"));
+
+      grid = g => g
+          .attr("stroke", "currentColor")
+          .attr("stroke-opacity", 0.1)
+          .call(g => g.append("g")
+              .selectAll("line")
+              .data(x.ticks())
+              .join("line")
+              .attr("x1", d => 0.5 + x(d))
+              .attr("x2", d => 0.5 + x(d))
+              .attr("y1", margin.top)
+              .attr("y2", height - margin.bottom))
+          .call(g => g.append("g")
+              .selectAll("line")
+              .data(y.ticks())
+              .join("line")
+              .attr("y1", d => 0.5 + y(d))
+              .attr("y2", d => 0.5 + y(d))
+              .attr("x1", margin.left)
+              .attr("x2", width - margin.right));
+
+      svgNode.append("g").call(xAxis);
+      svgNode.append("g").call(yAxis);
+      svgNode.append("g").call(grid);
+
+      circle = svgNode.append("g")
+          .attr("stroke", "black")
+          .selectAll("circle")
+          .data(dataAt(1991), d => d.Entity)
+          .join("circle")
+          .sort((a, b) => d3.descending(a.Population, b.Population))
+          .attr("cx", d => x(d.GDP))
+          .attr("cy", d => y(d.Death))
+          .attr("r", d => radius(d.Population))
+          .attr("fill", d => color(d.Continent))
+          .call(circle => circle.append("title")
+              .text(d => [d.Entity, d.Continent, ['Deaths: '+d.Death], ['GDP: '+d.GDP], ['Population: '+d.Population]].join("\n")));
+
+      // Attach event listeners for pointer events
+      d3.select(svg)
+        .on('pointerenter pointermove', onPointerMove)
+        .on('pointerleave', onPointerLeave);
+
+      // Draw legend
+      const legend = svgNode.append("g")
+          .attr("transform", `translate(${width - margin.right - 150}, ${margin.top})`);
+
+      const legendItems = legend.selectAll("g")
+          .data(color.domain())
+          .join("g")
+          .attr("transform", (d, i) => `translate(0, ${i * 20})`);
+
+      legendItems.append("rect")
+          .attr("width", 15)
+          .attr("height", 15)
+          .attr("fill", color);
+
+      legendItems.append("text")
+          .attr("x", 20)
+          .attr("y", 9)
+          .attr("dy", "0.35em")
+          .text(d => d);
+
+      // Return the SVG node
+      return svgNode.node();
   });
+
+  $: {
+      // Update circle positions and attributes when data or selectedYear changes
+      if (circle) {
+          circle.data(dataAt(selectedYear), d => d.Entity)
+              .sort((a, b) => d3.descending(a.Population, b.Population))
+              .attr("cx", d => x(d.GDP))
+              .attr("cy", d => y(d.Death))
+              .attr("r", d => radius(d.Population))
+              .attr("fill", d => color(d.Continent));
+      }
+  }
 </script>
 
-<main>
-  <h3>Topic: Story telling about the Ukraine Conflicts progress</h3>
-  <div style="margin: 0 auto; max-width: 950px;">
-    <p style="text-align:left; font-size:23px; line-height:100%">
-      World Deaths from Conflicts
-    </p>
-  </div>
-  <br>
-  <Graph {data} />
+<div>
+<CheckboxFilter continents={Array.from(new Set(data.map(d => d.Continent)))} bind:selectedContinents />
+</div>
 
-  <div style="margin: 0 auto; max-width: 1000px;">
-    <div style="margin: 0 auto; max-width: auto;">
-      <h4 style="text-align:left;">Write Up: What have you done so far? </h4>
-      <p style="text-align:left;">
-        We have conducted extensive research on the Ukraine conflicts, gathering data, articles, and reports to gain a comprehensive understanding of the topic.
-        We have identified key events, milestones, and developments in the Ukraine conflicts, organizing them into a chronological timeline.
-        We have started designing the layout and structure of our interactive web page, envisioning how we will present the information to users.
-        We have begun prototyping different visualization techniques, including timeflow charts, maps, and textual narratives, to effectively communicate the progression of the conflicts.
-      </p>
-      <br>
-      <h4 style="text-align:left;">What will be the most challenging of your project to design and why? </h4>
-      <p style="text-align:left;">
-        we anticipate that integrating the scrollytelling feature will pose the greatest challenge. Scrollytelling involves synchronizing the narrative progression with the user's scrolling actions, creating a seamless storytelling experience. This feature requires precise coordination between text, visuals, and user interactions, ensuring that the content unfolds in a coherent and engaging manner. Additionally, implementing map visualizations with Mapbox presents its own set of challenges, particularly regarding the layout and functionality when the foreground elements are absent. We anticipate that troubleshooting and resolving these issues will require careful attention to detail and experimentation with different design approaches. Despite these challenges, we are committed to delivering a compelling and informative Explorable Explanation on the Ukraine conflicts, leveraging innovative storytelling techniques and data visualization methods.
-      </p>
-    </div>
-    <br>
+<div><svg id='chart'
+  bind:this={svg}
+  {width}
+  {height}
+  viewBox="0 0 {width} {height}"
+  style="max-width: 400%; height: auto;"/></div>
 
-  </div>
-</main>
+  <!-- {#if tooltipPt}
+    <g transform="translate({x(tooltipPt.date)},{y(tooltipPt.value)})">
+      <text font-weight="bold">{tooltipPt.value}</text>
+    </g>
+  {/if}
+   -->
+<Slider bind:selectedYear />
+
 
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@300;400;700&display=swap');
-
-  :root {
-    --color-bg: #ffffff;
-    --color-outline: #c2c2c2;
-    --color-shadow: hsl(0, 0%, 0%, 0.1);
-    --color-text: #3f4252;
-    --color-bg-1: hsla(0, 0%, 0%, 0.2);
-    --color-shadow-1: hsl(0, 0%, 96%);
-  }
-
-  *,
-  *::before,
-  *::after {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-  }
-
-  main {
-    text-align: center;
-    font-family: 'Nunito', sans-serif;
-    font-weight: 300;
-    line-height: 2;
-    font-size: 24px;
-    color: var(--color-text);
-  }
-
-  h1 {
-    font-size: 2em;
-    font-weight: 300;
-    line-height: 2;
-  }
+/* Add your styles here */
 </style>
